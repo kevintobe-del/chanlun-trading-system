@@ -19,7 +19,7 @@
 
 **Claude Code**：
 ```bash
-git clone <this-repo>
+git clone https://github.com/noahnan-max/chanlun-trading-system.git
 cp -r chanlun-trading-system ~/.claude/skills/
 # 新开一个会话，问它"用缠论帮我看下 XXXX 的日线走势"即可自动触发
 ```
