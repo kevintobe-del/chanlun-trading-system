@@ -1,0 +1,32 @@
+MIT License
+
+Copyright (c) 2026 chanlun-trading-system contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Skill files"), to deal
+in the Skill files without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Skill files, and to permit persons to whom the Skill files are
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Skill files.
+
+THE SKILL FILES ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SKILL FILES OR THE USE OR OTHER DEALINGS IN
+THE SKILL FILES.
+
+---
+
+NOTE / 说明:
+- These Skill files operationalize the 缠论 (Chan Theory / 缠中说禅) technical-analysis
+  framework. The underlying theory is the original work of 缠中说禅 and is referenced
+  here for study and commentary purposes only.
+- The Skill is for technical research and education ONLY. It does NOT constitute
+  investment advice, does NOT issue buy/sell instructions, and makes NO guarantee
+  of returns. Use at your own risk.
+- 本 Skill 仅用于技术研究与学习，不构成投资建议、不提供买卖指令、不承诺收益，盈亏自负。
