@@ -26,7 +26,7 @@ cp -r chanlun-trading-system ~/.claude/skills/
 
 **其他 Agent / Codex / 本地模型**：把 `SKILL.md` 作为系统提示加载，需要细节时再按表喂入 `references/*.md`。
 
-**完全不会写代码**：直接把 `SKILL.md` 全文复制进你的 AI 对话框，开头加一句：
+**任意 AI / 完全不会写代码**：打开 **`缠论Skill_完整版_通用AI.md`**（中文通用版，最详细、含调度协议+实战示例，适配 DeepSeek/豆包/Kimi/元宝/千问/ChatGPT/Claude 等任意 AI），整段复制进对话框，开头加一句：
 > "按这套规则帮我分析【标的】的走势，先定级别、先认结构、先写失效点，不要直接给我买卖建议。"
 
 ## 目录结构
