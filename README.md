@@ -34,7 +34,7 @@ cp -r chanlun-trading-system ~/.claude/skills/
 ```
 chanlun-trading-system/
 ├── SKILL.md            # 主文件：规则 + 自检门 + 工作流 + 输出模板
-└── references/         # 按需加载的细则（11 篇）
+└── references/         # 按需加载的细则（12 篇）
     ├── concepts.md             # 定义 / 源头层级 / 术语 / 状态分类
     ├── strict-original-system.md  # 原文自检门 / 降级矩阵
     ├── structure-engine.md     # 包含 / 分型 / 笔 / 线段 / 中枢
@@ -44,6 +44,7 @@ chanlun-trading-system/
     ├── volume-turnover-money.md   # 量 / 换手 / 资金流匹配
     ├── invalidation-risk.md    # 失效模式 / 止损 / 仓位
     ├── backtest-proxies.md     # 缠论→可复现代理规则
+    ├── empirical-evidence.md   # 大样本回测硬数字 / 风控非选股
     ├── visual-reading.md       # 读图（截图 / 书图）
     └── self-test-cases.md      # 常见假阳性 / 复核清单
 ```

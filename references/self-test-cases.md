@@ -30,6 +30,34 @@ Sell false positives:
 - Second sell called before a rebound after first sell.
 - Third sell where rebound actually re-enters center and causes expansion.
 
+## Real Counterexamples (daily-box proxy scan)
+
+These are real A-share episodes flagged by a heuristic daily box/range scan — **not
+hand-labeled strict Chanlun**, so treat them as illustrative traps, not authoritative
+signals. Each one is a pattern the skill is built to refuse.
+
+False breakout that returns into the box (fake third buy):
+
+- 600717 around 2023-05-04 (box ~3.76–4.59): price broke above the range, then fell back
+  in. A breakout without a holding pullback is not a third buy.
+- 601222 around 2022-07-14 (box ~7.03–8.21): same trap — the "突破当三买" pattern Rule 13 forbids.
+
+False breakdown that recovers (fake sell / faked-out break):
+
+- 600717 around 2022-03-15 (box ~3.73–4.37): broke below the range, then recovered back in.
+- 601222 around 2022-04-25 (box ~5.87–7.90): a breakdown that round-trips — selling the
+  break here gets faked out; a break alone is not operating-level destruction.
+
+Indicator-only false positive (high RSI + volume, no structure):
+
+- 600717 around 2023-04-18 (box ~3.76–4.43): high RSI and volume expansion, but the move
+  failed. RSI/volume alone is not a buy point (Rule 6 / Rule 11).
+- 601222 around 2022-05-19 (box ~5.29–7.09): same — an indicator spike with no same-level
+  structure context.
+
+Lesson: each of these looks tradeable but fails. The gates (structure → pullback →
+lower-level trigger) exist precisely to reject breakout-chasing and indicator-only entries.
+
 ## Review Checklist
 
 For any signal:
@@ -55,6 +83,10 @@ Before trusting a rule:
 - Does sell-side performance decay after 20 days?
 - Are results dominated by a few outliers?
 - Are transaction costs and execution constraints considered?
+- Is the measured buy-side excess actually above realistic round-trip costs, or is the
+  "edge" just a few percent that costs eat? (Large-sample first-buy excess ≈ +2% / 20d.)
+- Are you framing Chanlun as alpha (stock picking) when the evidence says its dependable
+  use is risk control — exit / de-risk timing? See `references/empirical-evidence.md`.
 
 ## Example Prompts For This Skill
 

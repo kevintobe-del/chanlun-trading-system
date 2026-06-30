@@ -62,7 +62,7 @@ license: MIT (skill files) · 缠论 theory © 缠中说禅, used for study/comm
 4. **信号**：找候选买卖点并说明理由；背驰必须先点名被比较的两段。（细则见 `references/buy-sell-playbooks.md`，多级别/区间套/小转大见 `references/multi-level-recursion.md`）
 5. **动作**：用动词 `wait / observe / buy_probe / buy_confirmed / hold / reduce / sell_exit / rebuy / reject`，附失效点+下一观察点。（仓位/风险见 `references/invalidation-risk.md`）
 6. **过滤器**：结构归类完成后，才叠加 MACD/RSI/量/换手/资金流/趋势线/均线/筹码。（见 `references/filters.md`、`references/volume-turnover-money.md`）
-7. **回测**：要做策略/代码时，从一个最小闭环起步，严格定义与可测代理分列输出。（见 `references/backtest-proxies.md`）
+7. **回测**：要做策略/代码时，从一个最小闭环起步，严格定义与可测代理分列输出。回测硬数字与"风控非选股"的诚实口径见 `references/empirical-evidence.md`。（结构化代理规则见 `references/backtest-proxies.md`）
 8. **自检**：新规则或重要结论，对照常见假阳性复核。（见 `references/self-test-cases.md`）
 
 ## 输出模板
@@ -95,6 +95,7 @@ license: MIT (skill files) · 缠论 theory © 缠中说禅, used for study/comm
 | `volume-turnover-money.md` | 量、换手、资金流的匹配规则 |
 | `invalidation-risk.md` | 失效模式、止损、仓位、持有/减仓逻辑 |
 | `backtest-proxies.md` | 把缠论变成可复现的代理规则 |
+| `empirical-evidence.md` | 大样本回测硬数字：买点是试探非 alpha、卖点的风控价值、延迟敏感性 |
 | `self-test-cases.md` | 常见假阳性、复核清单、可复用 case prompt |
 
 ## 怎么用（安装）

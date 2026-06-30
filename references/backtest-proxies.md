@@ -45,18 +45,34 @@ Sell-side proxies mirror the above.
 
 ## Current Research Lessons
 
-Large-sample daily proxy results:
+Hard numbers and full tables live in `references/empirical-evidence.md` — cite that file,
+not this summary. Headline findings from the 176-stock large-sample daily proxy study
+(survivorship-biased; proxy ≠ strict Chan):
 
-- First buy had positive 20/60/120-day value but should be treated as probe.
-- Second buy was theoretically attractive but daily-only proxy needed volume/turnover confirmation.
-- Third buy was broadly positive but A-bucket saturation showed the proxy was too permissive.
-- Sell signals were useful as short-term risk management, not as long-term short signals.
+First buy — a probe, not alpha:
 
-TuShare 100-stock factor-combo result:
+- Idealized next-bar entry: **62.09% direction / +3.19% excess** over 20 days.
+- Realistic tradeable entry (reclaim MA10 + MACD histogram turn): **56.93% / +2.17% excess**.
+- Delay-sensitive: 62.09% (`delay_1`) → 56.43% (`delay_3`) → 53.44% (`delay_5`) at 20 days.
+- +2% excess over 20 days is thin after costs — treat a daily first buy as an
+  observation zone, not a fill.
 
-- Buy-side: `base+candle`, `base+volume`, and `base+volume+turnover` were strongest broad combinations.
+Sell side — the reliable half:
+
+- First sell, 20 days: **61.42% direction, ~1.87% avoided loss**; the edge fades past 20 days.
+- The single strongest signal in the study is a sell: strong divergence + down market =
+  **64.82% direction / 66.56% excess / +3.15% avoided loss**.
+- Use sell signals as a 20-day risk flag, not a long-term short thesis.
+
+Filters and regime:
+
+- Buy edge is mean-reversion: strong in down/oversold markets (~63%), but ~coin-flip on
+  excess in up markets (you are just riding beta).
+- Strong-divergence filter does NOT raise the buy hit rate (61.9% vs 62.1% baseline) — it
+  cuts signal count ~4x. Use it to trade less, not to trade more confidently.
 - Money flow should be a buy-side veto/risk factor rather than simple additive alpha.
-- Sell-side: short-term 20-day risk signals were useful; 60-day sell signals were unstable.
+
+Bottom line: as measured, Chanlun is a **risk-control / discipline tool, not a stock picker**.
 
 ## Evaluation Metrics
 

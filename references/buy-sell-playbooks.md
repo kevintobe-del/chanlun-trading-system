@@ -3,6 +3,7 @@
 ## Table Of Contents
 
 - Buy-side map
+- Evidence-backed execution rules
 - First buy
 - Second buy
 - Third buy
@@ -23,6 +24,24 @@ Practical ranking:
 - First buy has better price but lower confirmation.
 - Second buy is often the most practical balance of risk and confirmation.
 - Third buy is right-side confirmation but can be late if the larger level is exhausted.
+
+## Evidence-Backed Execution Rules
+
+From the large-sample proxy backtest (`references/empirical-evidence.md`). These override
+an optimistic structural read whenever they conflict:
+
+1. **A daily first buy is an observation zone, not a fill.** Do not mark `buy_confirmed`
+   on a daily first buy alone — require a lower-level (30m/60m) or daily reclaim trigger
+   first. (Idealized next-bar entry tested ~62% / 20d, but the realistic tradeable entry
+   was only ~57% with ~+2% excess — thin after costs.)
+2. **Prefer buys when the 120-day market trend is up and the stock's long-term MAs are not
+   deteriorating; cut size on first buys in a primary down-market.** The buy edge is
+   mean-reversion and is near coin-flip on *excess* return in hot up-markets.
+3. **Treat sell signals as a 20-day risk flag only.** If the weekly trend is still strong,
+   trim or trail the stop — do not mechanically liquidate. Sell-side edge decays past 20 days.
+4. **Strong divergence improves signal quality only marginally (it mainly cuts noise), and
+   RSI/MACD alone is never a buy/sell point** — use filters to trade less, not to trade
+   with more confidence.
 
 ## First Buy
 

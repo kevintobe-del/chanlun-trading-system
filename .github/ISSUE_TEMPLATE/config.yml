@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Read the project README
+    url: https://github.com/noahnan-max/chanlun-trading-system#readme
+    about: Please read the README first for scope, installation, disclaimers, and contribution boundaries.
