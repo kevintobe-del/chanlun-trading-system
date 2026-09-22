@@ -132,6 +132,7 @@ export interface Analysis {
 
 export interface AnalysisBundle {
   symbol: string;
+  name?: string;
   source: string;
   is_synthetic: boolean;
   frames: Partial<Record<Timeframe, Analysis>>;
@@ -147,4 +148,38 @@ export interface LayerVisibility {
   signals: boolean;
   volume: boolean;
   macd: boolean;
+}
+
+export interface DataSourceItem {
+  id: string;
+  provider: "yfinance" | "tushare" | "akshare";
+  name: string;
+  builtin: boolean;
+  has_api_key: boolean;
+  api_key_mask: string;
+  active: boolean;
+}
+
+export interface DataSourceConfig {
+  active_id: string;
+  sources: DataSourceItem[];
+  providers: Record<string, {label: string; requires_key: boolean}>;
+}
+
+export interface WatchlistItem {
+  symbol: string;
+  name: string;
+  last_searched_at?: string;
+}
+
+export interface WatchlistPool {
+  id: string;
+  name: string;
+  builtin: boolean;
+  items: WatchlistItem[];
+}
+
+export interface WatchlistConfig {
+  history: WatchlistItem[];
+  pools: WatchlistPool[];
 }

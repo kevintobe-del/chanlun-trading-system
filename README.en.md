@@ -40,7 +40,7 @@ chanlun-visual
 These remote commands require the GitHub `v0.1.1` tag to exist. Before it is published, use the local development path below. The public-quote adapter is optional; the bundled demo and CSV workflow do not need it:
 
 ```bash
-uv tool install --with yfinance "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
+uv tool install --with yfinance --with tushare --with akshare "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
 ```
 
 ### 2. Install the AI Skill

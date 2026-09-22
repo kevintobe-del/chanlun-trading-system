@@ -13,7 +13,26 @@ from pydantic import BaseModel, Field
 from . import __version__
 from .engine import DataQualityError, analyze, demo_bundle
 from .export import snapshot_html
-from .providers import canonical_symbol, yfinance_bars
+from .providers import (
+    active_source,
+    activate_source,
+    add_source,
+    canonical_symbol,
+    configured_bars,
+    delete_source,
+    instrument_display_name,
+    MarketAccessError,
+    MarketRateLimitError,
+    public_source_config,
+)
+from .watchlists import (
+    add_pool_item,
+    create_pool,
+    delete_pool,
+    load_watchlists,
+    record_search,
+    remove_pool_item,
+)
 
 
 class AnalyzeRequest(BaseModel):
@@ -25,6 +44,21 @@ class AnalyzeRequest(BaseModel):
 
 class ExportRequest(BaseModel):
     analysis: Dict[str, Any]
+
+
+class DataSourceCreateRequest(BaseModel):
+    provider: str = Field(min_length=1, max_length=32)
+    name: str = Field(min_length=1, max_length=64)
+    api_key: str = Field(default="", max_length=512)
+
+
+class WatchlistCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=32)
+
+
+class WatchlistItemRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=24)
+    name: str = Field(default="", max_length=64)
 
 
 app = FastAPI(
@@ -41,7 +75,9 @@ def health() -> Dict[str, Any]:
 
 @app.get("/api/demo")
 def demo(symbol: str = Query(default="DEMO", max_length=24)) -> Dict[str, Any]:
-    return demo_bundle(symbol)
+    bundle = demo_bundle(symbol)
+    bundle["name"] = "演示标的"
+    return bundle
 
 
 @app.post("/api/analyze")
@@ -60,22 +96,136 @@ def quote(symbol: str = Query(min_length=1, max_length=24)) -> Dict[str, Any]:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     frames = {}
     failures = {}
-    for timeframe in ("1d", "60m", "30m", "5m"):
+    try:
+        source = active_source()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    source_name = source["name"]
+    source_provider = source["provider"]
+    timeframes = ("1d", "60m", "30m", "5m")
+    provider_error = None
+    for index, timeframe in enumerate(timeframes):
         try:
-            bars = yfinance_bars(provider_symbol, timeframe)
-            frames[timeframe] = analyze(bars, provider_symbol, timeframe, "yfinance_public_optional")
+            bars, _ = configured_bars(provider_symbol, timeframe, source)
+            frames[timeframe] = analyze(bars, provider_symbol, timeframe, f"{source_provider}:{source_name}")
+        except (MarketRateLimitError, MarketAccessError) as exc:
+            provider_error = exc
+            failures[timeframe] = str(exc)
+            for skipped in timeframes[index + 1:]:
+                failures[skipped] = "已停止后续请求，避免继续触发上游限制"
+            break
         except Exception as exc:  # provider failures must remain visible per timeframe
             failures[timeframe] = str(exc)
     if not frames:
-        raise HTTPException(status_code=503, detail={"message": "公开行情暂不可用", "failures": failures})
+        message = str(provider_error) if provider_error else next(
+            iter(failures.values()), "当前数据源行情暂不可用"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "message": message,
+                "provider": source_name,
+                "retryable": isinstance(provider_error, MarketRateLimitError),
+                "failures": failures,
+            },
+        )
+    display_name = instrument_display_name(provider_symbol)
+    try:
+        record_search(provider_symbol, display_name)
+    except RuntimeError:
+        pass
     return {
         "symbol": provider_symbol,
+        "name": display_name,
         "requested_symbol": symbol,
-        "source": "yfinance_public_optional",
+        "source": f"{source_provider}:{source_name}",
         "is_synthetic": False,
         "frames": frames,
         "failures": failures,
     }
+
+
+@app.get("/api/watchlists")
+def get_watchlists() -> Dict[str, Any]:
+    try:
+        return load_watchlists()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/watchlists", status_code=201)
+def add_watchlist(request: WatchlistCreateRequest) -> Dict[str, Any]:
+    try:
+        return create_pool(request.name)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.delete("/api/watchlists/{pool_id}")
+def remove_watchlist(pool_id: str) -> Dict[str, Any]:
+    try:
+        return delete_pool(pool_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/watchlists/{pool_id}/items")
+def add_watchlist_item(pool_id: str, request: WatchlistItemRequest) -> Dict[str, Any]:
+    try:
+        symbol = canonical_symbol(request.symbol)
+        return add_pool_item(pool_id, symbol, request.name.strip() or symbol)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.delete("/api/watchlists/{pool_id}/items/{symbol:path}")
+def delete_watchlist_item(pool_id: str, symbol: str) -> Dict[str, Any]:
+    try:
+        return remove_pool_item(pool_id, canonical_symbol(symbol))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/data-sources")
+def list_data_sources() -> Dict[str, Any]:
+    try:
+        return public_source_config()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/data-sources", status_code=201)
+def create_data_source(request: DataSourceCreateRequest) -> Dict[str, Any]:
+    try:
+        return add_source(request.provider, request.name, request.api_key)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/data-sources/{source_id}/activate")
+def set_active_data_source(source_id: str) -> Dict[str, Any]:
+    try:
+        return activate_source(source_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.delete("/api/data-sources/{source_id}")
+def remove_data_source(source_id: str) -> Dict[str, Any]:
+    try:
+        return delete_source(source_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/export/html", response_class=HTMLResponse)

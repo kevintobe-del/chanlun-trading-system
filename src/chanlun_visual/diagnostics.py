@@ -28,7 +28,12 @@ def doctor_report() -> Dict[str, Any]:
         item.is_file() and item.suffix in {".css", ".js"} for item in assets.iterdir()
     )
     python_ok = sys.version_info >= (3, 9)
-    market_ok = importlib.util.find_spec("yfinance") is not None
+    market_adapters = {
+        "Yahoo Finance": importlib.util.find_spec("yfinance") is not None,
+        "Tushare": importlib.util.find_spec("tushare") is not None,
+        "AKShare": importlib.util.find_spec("akshare") is not None,
+    }
+    installed_adapters = [name for name, installed in market_adapters.items() if installed]
 
     checks: List[Dict[str, Any]] = [
         _check(
@@ -57,10 +62,10 @@ def doctor_report() -> Dict[str, Any]:
         ),
         _check(
             "market_adapter",
-            "pass" if market_ok else "warn",
-            "optional public-market adapter is installed"
-            if market_ok
-            else "optional public-market adapter is not installed; demo and CSV remain available",
+            "pass" if installed_adapters else "warn",
+            "installed optional adapters: " + ", ".join(installed_adapters)
+            if installed_adapters
+            else "optional market adapters are not installed; demo and CSV remain available",
             False,
         ),
     ]

@@ -2,10 +2,12 @@ import {Badge} from "@astryxdesign/core/Badge";
 import {Button} from "@astryxdesign/core/Button";
 import {Switch} from "@astryxdesign/core/Switch";
 import {TextInput} from "@astryxdesign/core/TextInput";
-import {Download, FileJson, FlaskConical, Layers3, Menu, Search, Upload} from "lucide-react";
+import {Database, Download, FileJson, FlaskConical, Layers3, Menu, Search, Upload} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ChanlunChart} from "./components/ChanlunChart";
+import {DataSourceDialog} from "./components/DataSourceDialog";
 import {EvidencePanel} from "./components/EvidencePanel";
+import {WatchlistPanel} from "./components/WatchlistPanel";
 import {parseOhlcvCsv} from "./lib/csv";
 import {boundedReplayCount} from "./lib/replay";
 import type {Analysis, AnalysisBundle, LayerVisibility, Timeframe} from "./types";
@@ -42,7 +44,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = contentType.includes("json") ? await response.json() : await response.text();
     const detail = typeof body === "object" && body && "detail" in body ? body.detail : body;
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const message = typeof detail === "object" && detail && "message" in detail && typeof detail.message === "string"
+      ? detail.message
+      : typeof detail === "string" ? detail : "请求失败，请稍后重试";
+    throw new Error(message);
   }
   return (contentType.includes("json") ? response.json() : response.text()) as Promise<T>;
 }
@@ -66,6 +71,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dataSourceOpen, setDataSourceOpen] = useState(false);
+  const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
+  const [watchlistVersion, setWatchlistVersion] = useState(0);
   const [asOfCount, setAsOfCount] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -92,19 +100,23 @@ export default function App() {
       .finally(() => setLoading(false));
   }, [acceptBundle]);
 
-  const loadQuote = async () => {
-    const clean = symbol.trim();
+  const loadQuoteForSymbol = async (requestedSymbol: string) => {
+    const clean = requestedSymbol.trim();
     if (!clean) return;
+    setSymbol(clean);
     setLoading(true);
     setError(null);
     try {
       acceptBundle(await api<AnalysisBundle>(`/api/quote?symbol=${encodeURIComponent(clean)}`));
+      setWatchlistVersion((value) => value + 1);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "公开行情加载失败");
+      setError(reason instanceof Error ? reason.message : "行情加载失败");
     } finally {
       setLoading(false);
     }
   };
+
+  const loadQuote = () => void loadQuoteForSymbol(symbol);
 
   const importCsv = async (file: File) => {
     setLoading(true);
@@ -116,7 +128,7 @@ export default function App() {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({symbol: symbol || file.name.replace(/\.csv$/i, ""), timeframe, source: "user_csv", bars}),
       });
-      acceptBundle({symbol: analysis.meta.symbol, source: "user_csv", is_synthetic: false, frames: {[timeframe]: analysis}});
+      acceptBundle({symbol: analysis.meta.symbol, name: analysis.meta.symbol, source: "user_csv", is_synthetic: false, frames: {[timeframe]: analysis}});
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "CSV 导入失败");
     } finally {
@@ -205,13 +217,14 @@ export default function App() {
         </div>
         <div className="symbol-search">
           <TextInput label="证券代码" isLabelHidden value={symbol} onChange={setSymbol} onEnter={loadQuote} placeholder="AAPL / 0700.HK" size="lg" width="100%" />
-          <Button label="加载公开行情" variant="primary" size="lg" icon={<Search size={16} />} onClick={loadQuote} isLoading={loading} />
+          <Button label="加载行情" variant="primary" size="lg" icon={<Search size={16} />} onClick={loadQuote} isLoading={loading} />
         </div>
         <div className="top-actions">
           <input ref={fileInput} type="file" accept=".csv,text/csv" hidden onChange={(event) => event.target.files?.[0] && importCsv(event.target.files[0])} />
           <Button label="导入 CSV" variant="secondary" icon={<Upload size={16} />} onClick={() => fileInput.current?.click()} />
           <Button label="导出 JSON" variant="ghost" icon={<FileJson size={16} />} onClick={exportJson} />
           <Button label="导出 HTML" variant="ghost" icon={<Download size={16} />} onClick={exportHtml} />
+          <Button label="配置数据源" variant="ghost" icon={<Database size={16} />} onClick={() => setDataSourceOpen(true)} />
           <button className="mobile-evidence" aria-label="打开证据抽屉" onClick={() => setDrawerOpen(true)}><Menu size={20} /></button>
         </div>
       </header>
@@ -226,7 +239,14 @@ export default function App() {
         <div className="governance-state"><span>治理</span><Badge variant="warning" label="DRAFT_REVIEW · NO_ACTION" /></div>
       </section>
 
-      <section className="workspace">
+      <section className={`workspace ${watchlistCollapsed ? "watchlist-collapsed" : ""}`}>
+        <WatchlistPanel
+          collapsed={watchlistCollapsed}
+          current={{symbol: bundle.symbol, name: bundle.name ?? bundle.symbol}}
+          refreshToken={watchlistVersion}
+          onToggle={() => setWatchlistCollapsed((value) => !value)}
+          onSelect={(nextSymbol) => void loadQuoteForSymbol(nextSymbol)}
+        />
         <div className="chart-column">
           <div className="chart-toolbar">
             <div className="timeframe-tabs" role="tablist" aria-label="周期">
@@ -257,7 +277,7 @@ export default function App() {
 
           <div className="chart-frame">
             <div className="chart-caption">
-              <div><strong>{active.meta.symbol}</strong><span>{TIMEFRAMES.find((item) => item.key === timeframe)?.label} · {active.meta.definition_mode}</span></div>
+              <div className="instrument-caption"><strong>{bundle.name ?? active.meta.symbol}</strong><b>{active.meta.symbol}</b><span>{TIMEFRAMES.find((item) => item.key === timeframe)?.label} · {active.meta.definition_mode}</span></div>
               <div className="legend"><span className="up">上涨</span><span className="down">下跌</span><span className="stroke">笔</span><span className="center">中枢</span></div>
             </div>
             <ChanlunChart analysis={active} layers={layers} selectedId={selectedId} onSelect={selectEvidence} />
@@ -292,6 +312,7 @@ export default function App() {
         <EvidencePanel analysis={active} selectedId={selectedId} useU1={useU1} isOpen={drawerOpen} onSelect={selectEvidence} onClose={() => setDrawerOpen(false)} />
       </section>
       {drawerOpen && <button className="drawer-scrim" aria-label="关闭证据抽屉" onClick={() => setDrawerOpen(false)} />}
+      <DataSourceDialog isOpen={dataSourceOpen} onClose={() => setDataSourceOpen(false)} />
       <footer><span>{active.meta.schema_version} · engine {active.meta.engine_version}</span><span>本地运行 · 无遥测 · 不连接券商</span></footer>
     </main>
   );

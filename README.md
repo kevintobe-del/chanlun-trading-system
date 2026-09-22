@@ -36,7 +36,7 @@ chanlun-visual
 上述远端命令以 GitHub `v0.1.1` tag 已发布为前提；未发布前请使用下方“本地开发安装”。公开行情是可选便利入口，CSV 与内置示例不依赖它：
 
 ```bash
-uv tool install --with yfinance "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
+uv tool install --with yfinance --with tushare --with akshare "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
 ```
 
 ### 2. 安装 AI Skill
@@ -87,6 +87,12 @@ uv run chanlun-visual
 
 工作台的公开行情入口是非权威可选适配器；失败时请回到 CSV。它不创建账户、不上传数据、不接券商、不下单。当前线段/中枢/背驰属于 `research_proxy`，不能称为严格原著等价实现。详细说明见 [`references/visual-workbench.md`](./references/visual-workbench.md)。
 
+顶部导航的“配置数据源”支持保存多个 Yahoo Finance、Tushare 或 AKShare 配置，并从中选择唯一一个生效项。前端加载行情时始终使用当前生效的数据源；Tushare Token 只保存在本机 `~/.config/chanlun-visual/data-sources.json`（文件权限为当前用户可读写），接口只向页面返回掩码。Tushare 与 AKShare 当前适配 A 股六位代码，分钟行情的可用范围与权限仍由对应服务决定。
+
+Yahoo Finance 可能按网络出口临时限流或拒绝访问。工作台会对短期限流有限重试、缓存成功结果，并在确认受限后停止后续周期请求；若提示当前网络不可用，请切换 AKShare/Tushare，而不要连续点击重试。
+
+行情成功加载后，图表标题会显示证券简称和代码，并自动记入左侧“股票池”的搜索历史。股票池可以折叠；用户可创建多个本地自选池、把当前证券加入任意自选池，或从历史和自选池中再次加载。数据保存在 `~/.config/chanlun-visual/watchlists.json`，不会上传。
+
 ## 目录结构
 
 ```
@@ -127,6 +133,10 @@ chanlun-trading-system/
 - 缠论技术分析体系原创归属 **缠中说禅**；本 Skill 是对其公开理论的操作化整理与研究性解读，用于学习交流。
 - Skill 文件（SKILL.md 及 references）以 **MIT 许可**开源，欢迎 fork / 改进 / 提 issue。
 - 二次分享请保留来源致谢与免责声明。
+
+## 群晖 NAS 部署
+
+仓库提供了 `Dockerfile` 与 `docker-compose.synology.yml`。完整的持久化目录、反向代理、安全边界、更新和排错步骤见 [`docs/nas-deployment.md`](./docs/nas-deployment.md)。应用没有内置登录鉴权，不要把服务端口直接暴露到公网。
 
 ## 贡献
 

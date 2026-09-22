@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+dist
+build
+ui/node_modules
+ui/.vite
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
+data

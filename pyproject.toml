@@ -16,7 +16,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-market = ["yfinance>=1.2,<2"]
+market = [
+  "yfinance>=1.2,<2",
+  "tushare>=1.4,<2",
+  "akshare>=1.17,<2",
+]
 dev = [
   "httpx>=0.28,<1",
   "pyyaml>=6,<7",

@@ -1,0 +1,17 @@
+services:
+  chanlun-visual:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chanlun-visual:local
+    container_name: chanlun-visual
+    restart: unless-stopped
+    user: "${PUID:-1026}:${PGID:-100}"
+    ports:
+      - "${CHANLUN_PORT:-8791}:8791"
+    environment:
+      CHANLUN_DATA_SOURCE_CONFIG: /config/data-sources.json
+      CHANLUN_WATCHLIST_CONFIG: /config/watchlists.json
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data:/config
