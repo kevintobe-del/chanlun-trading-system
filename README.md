@@ -105,7 +105,7 @@ chanlun-trading-system/
 ├── agents/openai.yaml  # OpenAI/Codex Skill 展示元数据
 ├── scripts/            # Skill 侧只读检查与启动助手
 ├── src/chanlun_visual/ # 本地计算/API、多周期报告编排 + 已构建前端
-├── 缠论SKill/chanlun_local/ # 子项目确定性报告引擎（含本地化 chan.py）
+├── src/chanlun_local/  # 子项目确定性报告引擎（含本地化 chan.py）
 ├── ui/                 # React/Astryx/ECharts 开发源码
 ├── tests/              # 数据门、无未来函数、API 测试
 ├── tools/              # Skill 归档与版本发布检查

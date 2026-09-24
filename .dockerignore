@@ -10,3 +10,7 @@ __pycache__
 *.pyo
 .DS_Store
 data
+# DSM 7's older BuildKit can fail while evaluating non-ASCII followpaths.
+# The reusable report engine is copied from src/chanlun_local instead.
+/*SKill*
+/*Skill*

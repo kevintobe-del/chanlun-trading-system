@@ -12,8 +12,6 @@ ui/*.tsbuildinfo
 ui/vite.config.js
 ui/vite.config.d.ts
 
-# The embedded report engine only ships its reusable Python package. Local
-# databases, keys, logs, virtualenvs, sample exports and the standalone UI stay local.
+# The reusable report engine lives under src/chanlun_local. The original local
+# subproject's databases, keys, logs, virtualenvs, sample exports and UI stay local.
 /缠论SKill/*
-!/缠论SKill/chanlun_local/
-!/缠论SKill/chanlun_local/**

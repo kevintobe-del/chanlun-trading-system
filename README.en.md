@@ -104,7 +104,7 @@ chanlun-trading-system/
 ├── agents/openai.yaml  # OpenAI/Codex Skill metadata
 ├── scripts/            # Read-only Skill checker and launcher
 ├── src/chanlun_visual/ # Local engine/API, report orchestration, and built frontend
-├── 缠论SKill/chanlun_local/ # Deterministic report engine with bundled chan.py
+├── src/chanlun_local/  # Deterministic report engine with bundled chan.py
 ├── ui/                 # React/Astryx/ECharts source
 ├── tests/              # Data gates, no-future, and API tests
 ├── tools/              # Skill archive and release-version checks

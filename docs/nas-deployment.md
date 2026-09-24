@@ -52,6 +52,8 @@ chmod 700 data
 
 ## 三、构建并启动
 
+报告引擎已经放在纯英文路径 `src/chanlun_local`，并从 Docker 构建上下文排除了原始中文子项目目录，以兼容 DSM 7 较旧 BuildKit 的 `followpaths` 限制。
+
 ```bash
 docker compose -f docker-compose.synology.yml up -d --build
 docker compose -f docker-compose.synology.yml ps

@@ -21,7 +21,6 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
-COPY ["缠论SKill/chanlun_local", "./缠论SKill/chanlun_local"]
 COPY --from=frontend /app/src/chanlun_visual/static ./src/chanlun_visual/static
 
 RUN python -m pip install --no-cache-dir ".[market]" && \

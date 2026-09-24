@@ -33,7 +33,7 @@ dev = [
 chanlun-visual = "chanlun_visual.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/chanlun_visual", "缠论SKill/chanlun_local"]
+packages = ["src/chanlun_visual", "src/chanlun_local"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
