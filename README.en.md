@@ -26,13 +26,13 @@ Chanlun's three classes of trade locations are referred to as **1st/2nd/3rd-clas
 After installing [`uv`](https://docs.astral.sh/uv/getting-started/installation/), run the pinned release without modifying an existing Python environment:
 
 ```bash
-uvx --from "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1" chanlun-visual
+uvx --from "git+https://github.com/kevintobe-del/chanlun-trading-system.git@v0.1.1" chanlun-visual
 ```
 
 For a persistent installation:
 
 ```bash
-uv tool install "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
+uv tool install "git+https://github.com/kevintobe-del/chanlun-trading-system.git@v0.1.1"
 chanlun-visual doctor --json
 chanlun-visual
 ```
@@ -40,7 +40,7 @@ chanlun-visual
 These remote commands require the GitHub `v0.1.1` tag to exist. Before it is published, use the local development path below. The public-quote adapter is optional; the bundled demo and CSV workflow do not need it:
 
 ```bash
-uv tool install --with yfinance --with tushare --with akshare "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
+uv tool install --with yfinance --with tushare --with akshare "git+https://github.com/kevintobe-del/chanlun-trading-system.git@v0.1.1"
 ```
 
 ### 2. Install the AI Skill
@@ -59,7 +59,7 @@ The Skill and the visual runtime are separate install units. The Skill supports 
 **Claude Code** can extract the same Skill archive under `~/.claude/skills/`. For a local clone:
 
 ```bash
-git clone https://github.com/noahnan-max/chanlun-trading-system.git
+git clone https://github.com/kevintobe-del/chanlun-trading-system.git
 cp -r chanlun-trading-system ~/.claude/skills/
 # Start a new session and ask:
 # "Use Chanlun to help me review the daily trend of XXXX"
@@ -83,7 +83,7 @@ The repository also includes a local-first interactive workbench. It annotates O
 ### 3. Local development install
 
 ```bash
-git clone https://github.com/noahnan-max/chanlun-trading-system.git
+git clone https://github.com/kevintobe-del/chanlun-trading-system.git
 cd chanlun-trading-system
 uv sync --all-extras
 uv run chanlun-visual doctor --json
@@ -94,6 +94,8 @@ Open `http://127.0.0.1:8791`. The bundled synthetic demo works offline. CSV inpu
 
 The app creates no account, uploads no data, connects to no broker, and executes no orders. The current segment/center/divergence implementation is a `research_proxy`, not a strict original-text equivalent. See [`references/visual-workbench.md`](./references/visual-workbench.md).
 
+After an A-share search, the collapsible right rail generates a deterministic daily, 30-minute, and 5-minute Chanlun report while the chart remains usable. The unified Settings dialog shares one active Yahoo Finance, Tushare, or AKShare source between charts and reports, and also exposes report lookbacks, encrypted Feishu/WeCom webhooks, and watchlist-based scheduled reports. Search-triggered reports are never sent automatically.
+
 ## Directory Structure
 
 ```text
@@ -101,7 +103,8 @@ chanlun-trading-system/
 ├── SKILL.md            # Main file: rules + audit gate + workflow + output template
 ├── agents/openai.yaml  # OpenAI/Codex Skill metadata
 ├── scripts/            # Read-only Skill checker and launcher
-├── src/chanlun_visual/ # Local engine/API and built frontend
+├── src/chanlun_visual/ # Local engine/API, report orchestration, and built frontend
+├── 缠论SKill/chanlun_local/ # Deterministic report engine with bundled chan.py
 ├── ui/                 # React/Astryx/ECharts source
 ├── tests/              # Data gates, no-future, and API tests
 ├── tools/              # Skill archive and release-version checks

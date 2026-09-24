@@ -139,6 +139,66 @@ export interface AnalysisBundle {
   failures?: Partial<Record<Timeframe, string>>;
 }
 
+export interface ReportLevel {
+  timeframe: "1w" | "1d" | "30m" | "5m";
+  status: string;
+  bars: number;
+  asof?: string;
+  pos_vs_last_zs?: "above_zs" | "in_zs" | "below_zs" | null;
+}
+
+export interface MultilevelReport {
+  id: string;
+  symbol: string;
+  name: string;
+  status: "buy_candidate" | "sell_risk" | "observe" | string;
+  report_text: string;
+  created_at: string;
+  source: {provider: string; name: string};
+  result: {
+    contract: string;
+    meta: {
+      asof: string | null;
+      definition_mode?: string;
+      trade_level: string;
+      confirm_level: string;
+      trigger_level: string;
+      ai_tokens: number;
+    };
+    levels: Record<"1w" | "1d" | "30m" | "5m", ReportLevel & Record<string, unknown>>;
+    verdict: {
+      action: string;
+      verdict: string;
+      confirmation_30m: boolean;
+      trigger_5m: boolean;
+      invalidations: Array<{invalidation: {rule: string; px: number}}>;
+      next_observation: string[];
+      definition_mode: string;
+      execution_allowed: false;
+    };
+    caveats: string[];
+    data_refresh?: {timeframes: Record<string, {fetched?: number; error?: string}>};
+  };
+}
+
+export interface ReportSettings {
+  analysis: {daily_years: number; minute30_years: number; minute5_days: number};
+  webhooks: {
+    feishu_enabled: boolean;
+    feishu_configured: boolean;
+    feishu_secret_configured: boolean;
+    wecom_enabled: boolean;
+    wecom_configured: boolean;
+  };
+  automation: {
+    automatic_enabled: boolean;
+    premarket_time: string;
+    after_close_time: string;
+    default_send_report: boolean;
+  };
+  shared_source: {id: string; provider: string; name: string};
+}
+
 export interface LayerVisibility {
   fractals: boolean;
   strokes: boolean;

@@ -6,7 +6,12 @@ services:
     image: chanlun-visual:local
     container_name: chanlun-visual
     restart: unless-stopped
+    init: true
     user: "${PUID:-1026}:${PGID:-100}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
       - "${CHANLUN_PORT:-8791}:8791"
     environment:
@@ -15,3 +20,8 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - ./data:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

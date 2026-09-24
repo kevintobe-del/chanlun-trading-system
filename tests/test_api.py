@@ -14,6 +14,7 @@ from chanlun_visual.providers import (
     akshare_bars,
     canonical_symbol,
 )
+from chanlun_visual.multilevel_reports import close_report_database
 
 
 client = TestClient(app)
@@ -53,6 +54,11 @@ def test_common_market_symbols_are_canonicalized():
     assert canonical_symbol("600519") == "600519.SS"
     assert canonical_symbol("0700") == "0700.HK"
     assert canonical_symbol("AAPL") == "AAPL"
+    assert canonical_symbol("1A0001") == "000001.SS"
+    assert canonical_symbol("上证指数") == "000001.SS"
+    assert canonical_symbol("1B0688") == "000688.SS"
+    assert canonical_symbol("科创50") == "000688.SS"
+    assert canonical_symbol("深证成指") == "399001.SZ"
 
 
 def test_data_sources_can_be_added_activated_and_deleted(tmp_path, monkeypatch):
@@ -160,6 +166,91 @@ def test_akshare_falls_back_to_sina_and_bypasses_broken_proxy(monkeypatch):
     assert "quotes.sina.cn" in os.environ["NO_PROXY"]
 
 
+def test_akshare_routes_shenzhen_index_to_index_and_tencent_apis(monkeypatch):
+    class FakeFrame:
+        empty = False
+
+        def __init__(self, row):
+            self.row = row
+
+        def iterrows(self):
+            yield 0, self.row
+
+    calls = []
+
+    def eastmoney_index_failure(**kwargs):
+        calls.append(("eastmoney-index", kwargs))
+        raise RuntimeError("index endpoint unavailable")
+
+    def tencent_index(**kwargs):
+        calls.append(("tencent-index", kwargs))
+        return FakeFrame(
+            {
+                "date": "2026-09-22",
+                "open": 13200,
+                "high": 13300,
+                "low": 13100,
+                "close": 13250,
+                "amount": 1000000,
+            }
+        )
+
+    def stock_api_must_not_run(**kwargs):
+        raise AssertionError(f"index incorrectly routed to stock API: {kwargs}")
+
+    fake_akshare = SimpleNamespace(
+        index_zh_a_hist=eastmoney_index_failure,
+        stock_zh_index_daily_tx=tencent_index,
+        stock_zh_index_daily=stock_api_must_not_run,
+        stock_zh_a_hist=stock_api_must_not_run,
+        stock_zh_a_daily=stock_api_must_not_run,
+    )
+    monkeypatch.setitem(sys.modules, "akshare", fake_akshare)
+
+    bars = akshare_bars("399001.SZ", "1d")
+
+    assert len(bars) == 1
+    assert bars[0]["close"] == 13250
+    assert calls[0][0] == "eastmoney-index"
+    assert calls[1][0] == "tencent-index"
+    assert calls[1][1]["symbol"] == "sz399001"
+
+
+def test_akshare_routes_shenzhen_index_minutes_to_index_api(monkeypatch):
+    class FakeFrame:
+        empty = False
+
+        def iterrows(self):
+            yield 0, {
+                "时间": "2026-09-22 10:00:00",
+                "开盘": 13200,
+                "最高": 13300,
+                "最低": 13100,
+                "收盘": 13250,
+                "成交量": 100000,
+            }
+
+    calls = []
+
+    def index_minutes(**kwargs):
+        calls.append(kwargs)
+        return FakeFrame()
+
+    fake_akshare = SimpleNamespace(
+        index_zh_a_hist_min_em=index_minutes,
+        stock_zh_a_hist_min_em=lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError(f"index incorrectly routed to stock API: {kwargs}")
+        ),
+    )
+    monkeypatch.setitem(sys.modules, "akshare", fake_akshare)
+
+    bars = akshare_bars("399001.SZ", "30m")
+
+    assert len(bars) == 1
+    assert calls[0]["symbol"] == "399001"
+    assert calls[0]["period"] == "30"
+
+
 def test_sina_names_prefer_chinese_then_english():
     assert _parse_sina_quote_name("600893.SS", 'var hq_str_sh600893="航发动力,40.2";') == "航发动力"
     assert _parse_sina_quote_name("0700.HK", 'var hq_str_hk00700="TENCENT,腾讯控股,442";') == "腾讯控股"
@@ -193,3 +284,52 @@ def test_watchlist_history_and_custom_pool_lifecycle(tmp_path, monkeypatch):
     deleted = client.delete(f"/api/watchlists/{pool['id']}")
     assert deleted.status_code == 200
     assert all(item["id"] != pool["id"] for item in deleted.json()["pools"])
+
+
+def test_report_settings_share_the_active_market_source(tmp_path, monkeypatch):
+    close_report_database()
+    monkeypatch.setenv("CHANLUN_REPORT_HOME", str(tmp_path / "reports"))
+    monkeypatch.setenv("CHANLUN_DATA_SOURCE_CONFIG", str(tmp_path / "sources.json"))
+
+    response = client.get("/api/report-settings")
+    assert response.status_code == 200
+    assert response.json()["shared_source"]["provider"] == "yfinance"
+
+    updated = client.put(
+        "/api/report-settings/analysis",
+        json={"daily_years": 8, "minute30_years": 3, "minute5_days": 240},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["analysis"] == {
+        "daily_years": 8,
+        "minute30_years": 3,
+        "minute5_days": 240,
+    }
+    close_report_database()
+
+
+def test_search_report_endpoint_returns_engine_contract(monkeypatch):
+    expected = {
+        "id": "report-1",
+        "symbol": "600893.SH",
+        "name": "航发动力",
+        "status": "observe",
+        "report_text": "deterministic report",
+        "result": {"contract": "chanlun_multilevel_v1"},
+        "source": {"provider": "akshare", "name": "AKShare"},
+        "created_at": "2026-09-24T09:00:00",
+    }
+    calls = []
+
+    def fake_generate(symbol, name, session, notify):
+        calls.append((symbol, name, session, notify))
+        return expected
+
+    monkeypatch.setattr(api_module, "generate_report", fake_generate)
+    response = client.post(
+        "/api/reports/analyze",
+        json={"symbol": "600893", "name": "航发动力"},
+    )
+    assert response.status_code == 200
+    assert response.json() == expected
+    assert calls == [("600893", "航发动力", "manual", False)]

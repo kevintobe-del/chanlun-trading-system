@@ -13,13 +13,15 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     CHANLUN_DATA_SOURCE_CONFIG=/config/data-sources.json \
-    CHANLUN_WATCHLIST_CONFIG=/config/watchlists.json
+    CHANLUN_WATCHLIST_CONFIG=/config/watchlists.json \
+    CHANLUN_REPORT_HOME=/config/reports
 
 RUN useradd --create-home --uid 10001 app
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY ["缠论SKill/chanlun_local", "./缠论SKill/chanlun_local"]
 COPY --from=frontend /app/src/chanlun_visual/static ./src/chanlun_visual/static
 
 RUN python -m pip install --no-cache-dir ".[market]" && \

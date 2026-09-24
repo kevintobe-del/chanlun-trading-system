@@ -17,6 +17,16 @@ from uuid import uuid4
 
 
 SYMBOL = re.compile(r"^[A-Za-z0-9.=_^-]{1,24}$")
+INDEX_SYMBOL_ALIASES = {
+    "1A0001": "000001.SS",
+    "上证指数": "000001.SS",
+    "上证综指": "000001.SS",
+    "SHCOMP": "000001.SS",
+    "1B0688": "000688.SS",
+    "科创50": "000688.SS",
+    "STAR50": "000688.SS",
+    "深证成指": "399001.SZ",
+}
 SUPPORTED_PROVIDERS = {
     "yfinance": {"label": "Yahoo Finance", "requires_key": False},
     "tushare": {"label": "Tushare", "requires_key": True},
@@ -40,6 +50,11 @@ class MarketAccessError(RuntimeError):
 def canonical_symbol(symbol: str) -> str:
     """Map common bare Greater-China codes to public-provider notation."""
     clean = symbol.strip().upper()
+    if clean in INDEX_SYMBOL_ALIASES:
+        return INDEX_SYMBOL_ALIASES[clean]
+    legacy_index = re.fullmatch(r"1[AB](\d{4})", clean)
+    if legacy_index:
+        return f"00{legacy_index.group(1)}.SS"
     if not SYMBOL.fullmatch(clean):
         raise ValueError("证券代码格式无效")
     if re.fullmatch(r"\d{6}", clean):
@@ -225,6 +240,15 @@ def _a_share_prefixed_code(symbol: str) -> str:
     return prefix + match.group(1)
 
 
+def _is_a_share_index(symbol: str) -> bool:
+    """Recognize exchange index namespaces that overlap with six-digit equities."""
+    clean = canonical_symbol(symbol)
+    return bool(
+        re.fullmatch(r"399\d{3}\.SZ", clean)
+        or re.fullmatch(r"000\d{3}\.SS", clean)
+    )
+
+
 def _bypass_proxy_for_hosts(*hosts: str) -> None:
     """Bypass a broken inherited proxy only for known public market hosts."""
     for variable in ("NO_PROXY", "no_proxy"):
@@ -329,6 +353,7 @@ def akshare_bars(symbol: str, timeframe: str, api_key: str = "") -> List[Dict[st
         raise RuntimeError("未安装 AKShare 行情扩展；请运行 pip install 'chanlun-visual[market]'") from exc
     code = _a_share_code(symbol)
     prefixed_code = _a_share_prefixed_code(symbol)
+    is_index = _is_a_share_index(symbol)
     end = datetime.now().strftime("%Y%m%d")
     start = (datetime.now() - timedelta(days=730)).strftime("%Y%m%d")
     period = {"60m": "60", "30m": "30", "5m": "5"}.get(timeframe)
@@ -336,29 +361,53 @@ def akshare_bars(symbol: str, timeframe: str, api_key: str = "") -> List[Dict[st
         raise ValueError("不支持的周期")
     try:
         if timeframe == "1d":
-            frame = ak.stock_zh_a_hist(symbol=code, period="daily", start_date=start, end_date=end, adjust="", timeout=15)
+            if is_index:
+                frame = ak.index_zh_a_hist(
+                    symbol=code, period="daily", start_date=start, end_date=end
+                )
+            else:
+                frame = ak.stock_zh_a_hist(
+                    symbol=code, period="daily", start_date=start, end_date=end,
+                    adjust="", timeout=15,
+                )
             columns = {"date": "日期", "open": "开盘", "high": "最高", "low": "最低", "close": "收盘", "volume": "成交量"}
         else:
-            frame = ak.stock_zh_a_hist_min_em(
-                symbol=code,
-                period=period,
-                start_date=(datetime.now() - timedelta(days=120)).strftime("%Y-%m-%d 09:00:00"),
-                end_date=datetime.now().strftime("%Y-%m-%d 16:00:00"),
-                adjust="",
+            minute_args = {
+                "symbol": code,
+                "period": period,
+                "start_date": (datetime.now() - timedelta(days=120)).strftime("%Y-%m-%d 09:00:00"),
+                "end_date": datetime.now().strftime("%Y-%m-%d 16:00:00"),
+            }
+            frame = (
+                ak.index_zh_a_hist_min_em(**minute_args)
+                if is_index
+                else ak.stock_zh_a_hist_min_em(**minute_args, adjust="")
             )
+            columns = {"date": "时间", "open": "开盘", "high": "最高", "low": "最低", "close": "收盘", "volume": "成交量"}
         if frame is None or frame.empty:
             raise RuntimeError("东方财富没有返回数据")
         return _frame_to_bars(frame, columns)
     except Exception:
         _bypass_proxy_for_hosts(
             "push2his.eastmoney.com",
+            "80.push2.eastmoney.com",
             "quotes.sina.cn",
             "finance.sina.com.cn",
             "proxy.finance.qq.com",
         )
         try:
             if timeframe == "1d":
-                frame = ak.stock_zh_a_daily(symbol=prefixed_code, start_date=start, end_date=end, adjust="")
+                if is_index:
+                    try:
+                        frame = ak.stock_zh_index_daily_tx(
+                            symbol=prefixed_code, start_date=start, end_date=end
+                        )
+                    except Exception:
+                        frame = ak.stock_zh_index_daily(symbol=prefixed_code)
+                else:
+                    frame = ak.stock_zh_a_daily(
+                        symbol=prefixed_code, start_date=start, end_date=end, adjust=""
+                    )
                 columns = {"date": "date", "open": "open", "high": "high", "low": "low", "close": "close", "volume": "volume"}
             else:
                 frame = ak.stock_zh_a_minute(symbol=prefixed_code, period=period, adjust="")
@@ -368,7 +417,7 @@ def akshare_bars(symbol: str, timeframe: str, api_key: str = "") -> List[Dict[st
             return _frame_to_bars(frame, columns)
         except Exception as fallback_exc:
             raise MarketAccessError(
-                "AKShare 的东方财富和新浪行情均无法访问，请检查网络或代理设置"
+                "AKShare 的东方财富、腾讯和新浪行情均无法访问，请检查网络或代理设置"
             ) from fallback_exc
 
 

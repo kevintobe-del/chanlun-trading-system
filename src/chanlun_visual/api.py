@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -24,6 +26,18 @@ from .providers import (
     MarketAccessError,
     MarketRateLimitError,
     public_source_config,
+)
+from .multilevel_reports import (
+    generate_report,
+    get_report,
+    list_reports,
+    public_report_settings,
+    save_analysis_settings,
+    save_automation_settings,
+    save_webhook_settings,
+    start_report_scheduler,
+    stop_report_scheduler,
+    test_webhooks,
 )
 from .watchlists import (
     add_pool_item,
@@ -61,10 +75,46 @@ class WatchlistItemRequest(BaseModel):
     name: str = Field(default="", max_length=64)
 
 
+class ReportRequest(BaseModel):
+    symbol: str = Field(min_length=1, max_length=24)
+    name: str = Field(default="", max_length=64)
+    session: str = Field(default="manual", pattern="^(manual|premarket|after_close)$")
+    notify: bool = False
+
+
+class ReportAnalysisSettingsRequest(BaseModel):
+    daily_years: int = Field(default=5, ge=2, le=20)
+    minute30_years: int = Field(default=2, ge=1, le=10)
+    minute5_days: int = Field(default=180, ge=30, le=3650)
+
+
+class ReportWebhookSettingsRequest(BaseModel):
+    feishu_enabled: bool = False
+    feishu_url: str | None = Field(default=None, max_length=2048)
+    feishu_secret: str | None = Field(default=None, max_length=512)
+    wecom_enabled: bool = False
+    wecom_url: str | None = Field(default=None, max_length=2048)
+
+
+class ReportAutomationSettingsRequest(BaseModel):
+    automatic_enabled: bool = True
+    premarket_time: str = Field(default="08:30", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    after_close_time: str = Field(default="18:00", pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    default_send_report: bool = False
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    start_report_scheduler()
+    yield
+    stop_report_scheduler()
+
+
 app = FastAPI(
     title="Chanlun Visual Research Workbench",
     version=__version__,
     description="Local research proxy only; no trading execution.",
+    lifespan=lifespan,
 )
 
 
@@ -226,6 +276,81 @@ def remove_data_source(source_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/report-settings")
+def report_settings() -> Dict[str, Any]:
+    try:
+        return public_report_settings()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.put("/api/report-settings/analysis")
+def update_report_analysis_settings(request: ReportAnalysisSettingsRequest) -> Dict[str, Any]:
+    try:
+        return save_analysis_settings(request.model_dump())
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.put("/api/report-settings/webhooks")
+def update_report_webhook_settings(request: ReportWebhookSettingsRequest) -> Dict[str, Any]:
+    try:
+        return save_webhook_settings(request.model_dump())
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.put("/api/report-settings/automation")
+def update_report_automation_settings(request: ReportAutomationSettingsRequest) -> Dict[str, Any]:
+    try:
+        return save_automation_settings(request.model_dump())
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/report-settings/webhooks/test")
+async def test_report_webhooks() -> Dict[str, Any]:
+    try:
+        return await asyncio.to_thread(test_webhooks)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/reports/analyze")
+async def analyze_report(request: ReportRequest) -> Dict[str, Any]:
+    try:
+        return await asyncio.to_thread(
+            generate_report,
+            request.symbol,
+            request.name,
+            request.session,
+            request.notify,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.get("/api/reports")
+def report_history(limit: int = Query(default=50, ge=1, le=200)) -> Dict[str, Any]:
+    try:
+        return list_reports(limit)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/api/reports/{report_id}")
+def report_detail(report_id: str) -> Dict[str, Any]:
+    try:
+        result = get_report(report_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail="报告不存在")
+    return result
 
 
 @app.post("/api/export/html", response_class=HTMLResponse)

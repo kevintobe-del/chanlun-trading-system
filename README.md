@@ -22,13 +22,13 @@
 安装 [`uv`](https://docs.astral.sh/uv/getting-started/installation/) 后，可以从固定版本一次性运行，不污染现有 Python 环境：
 
 ```bash
-uvx --from "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1" chanlun-visual
+uvx --from "git+https://github.com/kevintobe-del/chanlun-trading-system.git@v0.1.1" chanlun-visual
 ```
 
 需要长期使用：
 
 ```bash
-uv tool install "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
+uv tool install "git+https://github.com/kevintobe-del/chanlun-trading-system.git@v0.1.1"
 chanlun-visual doctor --json
 chanlun-visual
 ```
@@ -36,7 +36,7 @@ chanlun-visual
 上述远端命令以 GitHub `v0.1.1` tag 已发布为前提；未发布前请使用下方“本地开发安装”。公开行情是可选便利入口，CSV 与内置示例不依赖它：
 
 ```bash
-uv tool install --with yfinance --with tushare --with akshare "git+https://github.com/noahnan-max/chanlun-trading-system.git@v0.1.1"
+uv tool install --with yfinance --with tushare --with akshare "git+https://github.com/kevintobe-del/chanlun-trading-system.git@v0.1.1"
 ```
 
 ### 2. 安装 AI Skill
@@ -55,7 +55,7 @@ Skill 与可视工作台运行时是两个安装单元：只装 Skill 可以进�
 **Claude Code** 可以把同一个发布版 Skill 解压到 `~/.claude/skills/`。本地克隆安装方式：
 
 ```bash
-git clone https://github.com/noahnan-max/chanlun-trading-system.git
+git clone https://github.com/kevintobe-del/chanlun-trading-system.git
 cp -r chanlun-trading-system ~/.claude/skills/
 # 新开一个会话，问它"用缠论帮我看下 XXXX 的日线走势"即可自动触发
 ```
@@ -76,22 +76,26 @@ cp -r chanlun-trading-system ~/.claude/skills/
 ### 3. 本地开发安装
 
 ```bash
-git clone https://github.com/noahnan-max/chanlun-trading-system.git
+git clone https://github.com/kevintobe-del/chanlun-trading-system.git
 cd chanlun-trading-system
 uv sync --all-extras
 uv run chanlun-visual doctor --json
 uv run chanlun-visual
 ```
 
-浏览器打开 `http://127.0.0.1:8791`。内置合成示例无需网络；导入 CSV 时至少需要 `date,open,high,low,close`，`volume` 可选。公开行情入口接受 `300684`、`600519`、`0700`、`AAPL` 等常见写法并自动补齐市场后缀。要使用这个便利入口，再安装：
+浏览器打开 `http://127.0.0.1:8791`。内置合成示例无需网络；导入 CSV 时至少需要 `date,open,high,low,close`，`volume` 可选。公开行情入口接受 `300684`、`600519`、`399001`（深证成指）、`1A0001`/`上证指数`、`1B0688`/`科创50`、`0700`、`AAPL` 等常见写法并自动补齐市场后缀。要使用这个便利入口，再安装：
 
 工作台的公开行情入口是非权威可选适配器；失败时请回到 CSV。它不创建账户、不上传数据、不接券商、不下单。当前线段/中枢/背驰属于 `research_proxy`，不能称为严格原著等价实现。详细说明见 [`references/visual-workbench.md`](./references/visual-workbench.md)。
 
-顶部导航的“配置数据源”支持保存多个 Yahoo Finance、Tushare 或 AKShare 配置，并从中选择唯一一个生效项。前端加载行情时始终使用当前生效的数据源；Tushare Token 只保存在本机 `~/.config/chanlun-visual/data-sources.json`（文件权限为当前用户可读写），接口只向页面返回掩码。Tushare 与 AKShare 当前适配 A 股六位代码，分钟行情的可用范围与权限仍由对应服务决定。
+顶部导航的“设置”支持保存多个 Yahoo Finance、Tushare 或 AKShare 配置，并从中选择唯一一个生效项。K 线与多周期报告共用该数据源；Tushare Token 只保存在本机 `~/.config/chanlun-visual/data-sources.json`（文件权限为当前用户可读写），接口只向页面返回掩码。Tushare 与 AKShare 当前适配 A 股六位代码，分钟行情的可用范围与权限仍由对应服务决定。
 
 Yahoo Finance 可能按网络出口临时限流或拒绝访问。工作台会对短期限流有限重试、缓存成功结果，并在确认受限后停止后续周期请求；若提示当前网络不可用，请切换 AKShare/Tushare，而不要连续点击重试。
 
 行情成功加载后，图表标题会显示证券简称和代码，并自动记入左侧“股票池”的搜索历史。股票池可以折叠；用户可创建多个本地自选池、把当前证券加入任意自选池，或从历史和自选池中再次加载。数据保存在 `~/.config/chanlun-visual/watchlists.json`，不会上传。
+
+搜索 A 股后，页面右侧会异步生成日线、30 分钟线和 5 分钟线的确定性缠论分析报告；K 线会先显示，不必等待报告计算完成。右栏可折叠，并可在“缠论报告”和“结构证据”之间切换。报告严格保留引擎的结构状态、机械判定和失效条件，仅供研究，不会自动下单；搜索触发的报告也不会自动发送通知。
+
+“设置”里的“报告参数”和“通知与自动化”来自子项目配置能力，可调整三周期回看范围、配置加密保存的飞书/企业微信 Webhook，并按自选池在交易日定时生成报告。报告历史、行情缓存和加密配置保存在 `~/.config/chanlun-visual/reports/chanlun-reports.sqlite3`；容器部署时统一持久化到 `/config/reports/`。
 
 ## 目录结构
 
@@ -100,7 +104,8 @@ chanlun-trading-system/
 ├── SKILL.md            # 主文件：规则 + 自检门 + 工作流 + 输出模板
 ├── agents/openai.yaml  # OpenAI/Codex Skill 展示元数据
 ├── scripts/            # Skill 侧只读检查与启动助手
-├── src/chanlun_visual/ # 本地计算/API + 已构建前端
+├── src/chanlun_visual/ # 本地计算/API、多周期报告编排 + 已构建前端
+├── 缠论SKill/chanlun_local/ # 子项目确定性报告引擎（含本地化 chan.py）
 ├── ui/                 # React/Astryx/ECharts 开发源码
 ├── tests/              # 数据门、无未来函数、API 测试
 ├── tools/              # Skill 归档与版本发布检查

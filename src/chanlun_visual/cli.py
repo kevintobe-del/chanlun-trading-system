@@ -21,7 +21,7 @@ def _print_doctor_human(report: dict) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="启动本地缠论可视研究工作台")
+    parser = argparse.ArgumentParser(prog="cli.py", description="启动本地缠论可视研究工作台")
     parser.add_argument("command", nargs="?", choices=("serve", "doctor"), default="serve")
     parser.add_argument("--version", action="version", version="%(prog)s {}".format(__version__))
     parser.add_argument("--host", default="127.0.0.1", help="默认仅绑定本机")

@@ -2,15 +2,16 @@ import {Badge} from "@astryxdesign/core/Badge";
 import {Button} from "@astryxdesign/core/Button";
 import {Switch} from "@astryxdesign/core/Switch";
 import {TextInput} from "@astryxdesign/core/TextInput";
-import {Database, Download, FileJson, FlaskConical, Layers3, Menu, Search, Upload} from "lucide-react";
+import {Database, Download, FileJson, FileText, FlaskConical, Layers3, Menu, PanelRightClose, PanelRightOpen, Search, Upload} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ChanlunChart} from "./components/ChanlunChart";
 import {DataSourceDialog} from "./components/DataSourceDialog";
 import {EvidencePanel} from "./components/EvidencePanel";
+import {ReportPanel} from "./components/ReportPanel";
 import {WatchlistPanel} from "./components/WatchlistPanel";
 import {parseOhlcvCsv} from "./lib/csv";
 import {boundedReplayCount} from "./lib/replay";
-import type {Analysis, AnalysisBundle, LayerVisibility, Timeframe} from "./types";
+import type {Analysis, AnalysisBundle, LayerVisibility, MultilevelReport, Timeframe} from "./types";
 
 const TIMEFRAMES: Array<{key: Timeframe; label: string}> = [
   {key: "1d", label: "日线"},
@@ -73,9 +74,15 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [dataSourceOpen, setDataSourceOpen] = useState(false);
   const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [rightTab, setRightTab] = useState<"report" | "evidence">("report");
+  const [report, setReport] = useState<MultilevelReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [watchlistVersion, setWatchlistVersion] = useState(0);
   const [asOfCount, setAsOfCount] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
+  const reportRequestId = useRef(0);
 
   const active = bundle?.frames[timeframe];
   const availableFrames = useMemo(
@@ -100,6 +107,29 @@ export default function App() {
       .finally(() => setLoading(false));
   }, [acceptBundle]);
 
+  const generateReport = async (target: AnalysisBundle) => {
+    const requestId = ++reportRequestId.current;
+    setReportLoading(true);
+    setReportError(null);
+    setRightTab("report");
+    setRightCollapsed(false);
+    try {
+      const nextReport = await api<MultilevelReport>("/api/reports/analyze", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({symbol: target.symbol, name: target.name ?? target.symbol, session: "manual", notify: false}),
+      });
+      if (requestId === reportRequestId.current) setReport(nextReport);
+    } catch (reason) {
+      if (requestId === reportRequestId.current) {
+        setReport(null);
+        setReportError(reason instanceof Error ? reason.message : "多周期报告生成失败");
+      }
+    } finally {
+      if (requestId === reportRequestId.current) setReportLoading(false);
+    }
+  };
+
   const loadQuoteForSymbol = async (requestedSymbol: string) => {
     const clean = requestedSymbol.trim();
     if (!clean) return;
@@ -107,8 +137,10 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      acceptBundle(await api<AnalysisBundle>(`/api/quote?symbol=${encodeURIComponent(clean)}`));
+      const next = await api<AnalysisBundle>(`/api/quote?symbol=${encodeURIComponent(clean)}`);
+      acceptBundle(next);
       setWatchlistVersion((value) => value + 1);
+      void generateReport(next);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "行情加载失败");
     } finally {
@@ -119,6 +151,8 @@ export default function App() {
   const loadQuote = () => void loadQuoteForSymbol(symbol);
 
   const importCsv = async (file: File) => {
+    reportRequestId.current += 1;
+    setReportLoading(false);
     setLoading(true);
     setError(null);
     try {
@@ -129,6 +163,8 @@ export default function App() {
         body: JSON.stringify({symbol: symbol || file.name.replace(/\.csv$/i, ""), timeframe, source: "user_csv", bars}),
       });
       acceptBundle({symbol: analysis.meta.symbol, name: analysis.meta.symbol, source: "user_csv", is_synthetic: false, frames: {[timeframe]: analysis}});
+      setReport(null);
+      setReportError("CSV 导入只包含单周期数据，未自动生成日线/30分钟/5分钟报告");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "CSV 导入失败");
     } finally {
@@ -191,6 +227,8 @@ export default function App() {
 
   const selectEvidence = useCallback((id: string) => {
     setSelectedId(id);
+    setRightTab("evidence");
+    setRightCollapsed(false);
     if (window.matchMedia("(max-width: 900px)").matches) setDrawerOpen(true);
   }, []);
 
@@ -216,7 +254,7 @@ export default function App() {
           <div><strong>缠论可视研究</strong><span>CHANLUN WORKBENCH</span></div>
         </div>
         <div className="symbol-search">
-          <TextInput label="证券代码" isLabelHidden value={symbol} onChange={setSymbol} onEnter={loadQuote} placeholder="AAPL / 0700.HK" size="lg" width="100%" />
+          <TextInput label="证券代码" isLabelHidden value={symbol} onChange={setSymbol} onEnter={loadQuote} placeholder="600519 / 1A0001 / 科创50" size="lg" width="100%" />
           <Button label="加载行情" variant="primary" size="lg" icon={<Search size={16} />} onClick={loadQuote} isLoading={loading} />
         </div>
         <div className="top-actions">
@@ -224,8 +262,8 @@ export default function App() {
           <Button label="导入 CSV" variant="secondary" icon={<Upload size={16} />} onClick={() => fileInput.current?.click()} />
           <Button label="导出 JSON" variant="ghost" icon={<FileJson size={16} />} onClick={exportJson} />
           <Button label="导出 HTML" variant="ghost" icon={<Download size={16} />} onClick={exportHtml} />
-          <Button label="配置数据源" variant="ghost" icon={<Database size={16} />} onClick={() => setDataSourceOpen(true)} />
-          <button className="mobile-evidence" aria-label="打开证据抽屉" onClick={() => setDrawerOpen(true)}><Menu size={20} /></button>
+          <Button label="设置" variant="ghost" icon={<Database size={16} />} onClick={() => setDataSourceOpen(true)} />
+          <button className="mobile-evidence" aria-label="打开报告与证据" onClick={() => { setRightTab("report"); setDrawerOpen(true); }}><Menu size={20} /></button>
         </div>
       </header>
 
@@ -239,7 +277,7 @@ export default function App() {
         <div className="governance-state"><span>治理</span><Badge variant="warning" label="DRAFT_REVIEW · NO_ACTION" /></div>
       </section>
 
-      <section className={`workspace ${watchlistCollapsed ? "watchlist-collapsed" : ""}`}>
+      <section className={`workspace ${watchlistCollapsed ? "watchlist-collapsed" : ""} ${rightCollapsed ? "right-collapsed" : ""}`}>
         <WatchlistPanel
           collapsed={watchlistCollapsed}
           current={{symbol: bundle.symbol, name: bundle.name ?? bundle.symbol}}
@@ -309,7 +347,22 @@ export default function App() {
           )}
         </div>
 
-        <EvidencePanel analysis={active} selectedId={selectedId} useU1={useU1} isOpen={drawerOpen} onSelect={selectEvidence} onClose={() => setDrawerOpen(false)} />
+        <aside className={`research-rail ${drawerOpen ? "is-open" : ""} ${rightCollapsed ? "is-collapsed" : ""}`} aria-label="报告与证据">
+          {rightCollapsed ? (
+            <button className="research-expand" type="button" onClick={() => setRightCollapsed(false)}><PanelRightOpen size={17} /><span>报告</span></button>
+          ) : <>
+            <div className="research-tabs">
+              <button className={rightTab === "report" ? "is-active" : ""} onClick={() => setRightTab("report")}><FileText size={14} />缠论报告</button>
+              <button className={rightTab === "evidence" ? "is-active" : ""} onClick={() => setRightTab("evidence")}><Layers3 size={14} />结构证据</button>
+              <button className="research-collapse" aria-label="折叠右侧面板" onClick={() => { setRightCollapsed(true); setDrawerOpen(false); }}><PanelRightClose size={17} /></button>
+            </div>
+            {rightTab === "report" ? (
+              <ReportPanel report={report} loading={reportLoading} error={reportError} onRetry={() => bundle && void generateReport(bundle)} />
+            ) : (
+              <EvidencePanel analysis={active} selectedId={selectedId} useU1={useU1} isOpen onSelect={selectEvidence} onClose={() => setDrawerOpen(false)} />
+            )}
+          </>}
+        </aside>
       </section>
       {drawerOpen && <button className="drawer-scrim" aria-label="关闭证据抽屉" onClick={() => setDrawerOpen(false)} />}
       <DataSourceDialog isOpen={dataSourceOpen} onClose={() => setDataSourceOpen(false)} />
